@@ -1,0 +1,33 @@
+MACHINES = {
+  :"nginx" => {
+	:box_name => "ubuntu/xenial64",
+	:box_version => "20211001.0.0",
+	:cpus => 2,
+	:memory => 1024,
+	:ip => '12.1.1.2'
+	}
+}
+
+$provision_script = <<-'SHELL'
+mkdir -p ~root/.ssh; cp ~vagrant/.ssh/auth* ~root/.ssh
+sed -i '65s/PasswordAuthentification no/PasswordAuthentification yes/g' /etc/ssh/sshd_config
+systemctl restart sshd
+SHELL
+
+Vagrant.configure("2") do |config|
+	MACHINES.each do |boxname, boxconfig|
+		config.vm.synced_folder ".", "/vagrant", disabled:true
+		config.vm.define boxname do |box|
+			box.vm.box=boxconfig[:box_name]
+			box.vm.box_version = boxconfig[:box_version]
+			box.vm.host_name = boxname.to_s
+			box.vm.network "private_network", ip: boxconfig[:ip]
+			box.vm.provider "virtualbox" do |v|
+				v.memory = boxconfig[:memory]
+				v.cpus = boxconfig[:cpus]
+			end
+			box.vm.provision "shell", inline: $provision_script
+		end
+	end
+end
+
